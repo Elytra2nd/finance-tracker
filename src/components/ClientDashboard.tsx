@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatRupiah } from "@/lib/utils";
 import CategoryChart from "./CategoryChart";
+import TimeSeriesChart from "./TimeSeriesChart"; // <-- Import Grafik Baru
 import TransactionItem from "./TransactionItem";
 import TransactionForm from "./TransactionForm";
 import ExportButton from "./ExportButton"; 
@@ -29,14 +30,14 @@ export default function ClientDashboard({ transactions, totalIncome, totalExpens
   return (
     <main className="min-h-screen bg-gray-50 pb-28 font-sans">
       {/* --- HEADER MODERN DENGAN GRADASI --- */}
-      <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 pt-8 pb-20 px-6 rounded-b-[2.5rem] shadow-xl overflow-hidden">
+      <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 pt-8 pb-24 px-6 rounded-b-[2.5rem] shadow-xl overflow-hidden">
         {/* Dekorasi Background */}
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
            <div className="absolute top-[-50px] right-[-50px] w-40 h-40 bg-white rounded-full blur-3xl"></div>
            <div className="absolute bottom-[-20px] left-[-20px] w-32 h-32 bg-blue-300 rounded-full blur-2xl"></div>
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div>
               <p className="text-blue-100 text-sm">Selamat Datang,</p>
@@ -59,7 +60,7 @@ export default function ClientDashboard({ transactions, totalIncome, totalExpens
         </div>
       </div>
 
-      <div className="px-6 -mt-12 relative z-20 space-y-6">
+      <div className="px-6 -mt-16 relative z-20 space-y-6 max-w-4xl mx-auto">
         
         {/* --- SUMMARY CARDS (GLASS EFFECT) --- */}
         <motion.div 
@@ -92,19 +93,32 @@ export default function ClientDashboard({ transactions, totalIncome, totalExpens
            <ExportButton transactions={transactions} />
         </div>
 
-        {/* --- CHART SECTION --- */}
-        <motion.div
-           initial={{ scale: 0.95, opacity: 0 }}
-           animate={{ scale: 1, opacity: 1 }}
-           transition={{ delay: 0.2 }}
-        >
-          <CategoryChart transactions={transactions} />
-        </motion.div>
+        {/* --- CHART SECTION (GRID LAYOUT) --- */}
+        {/* Di HP: Atas-Bawah, Di Laptop: Kiri-Kanan */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+            >
+                {/* GRAFIK DONAT (Kategori) */}
+                <CategoryChart transactions={transactions} />
+            </motion.div>
+
+            <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+            >
+                {/* GRAFIK TIME SERIES (Tren Harian) */}
+                <TimeSeriesChart transactions={transactions} />
+            </motion.div>
+        </div>
 
         {/* --- RECENT TRANSACTIONS --- */}
         <div>
           <h3 className="font-bold text-gray-800 mb-4 text-lg px-1">Riwayat Transaksi</h3>
-          <div className="space-y-3">
+          <div className="space-y-3 pb-8">
             <AnimatePresence>
               {transactions.length > 0 ? (
                 transactions.map((t: any) => (
