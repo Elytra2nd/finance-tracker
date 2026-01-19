@@ -17,7 +17,7 @@ export async function scanReceiptAction(formData: FormData) {
   const base64Image = buffer.toString("base64");
 
   // 2. Siapkan Model
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
   // 3. Buat Prompt (Perintah) yang Spesifik
   const prompt = `
