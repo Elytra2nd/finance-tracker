@@ -6,7 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { addTransactionAction, updateTransactionAction } from "@/actions/transaction";
-import ScanButton from "./ScanButton"; // <-- Import Tombol Scan
+import ScanButton from "./ScanButton";
+
+// Daftar Kategori Valid sesuai Aplikasi
+const VALID_CATEGORIES = ["Makan", "Transport", "Hiburan", "Belanja", "Tagihan", "Lainnya"];
 
 export default function TransactionForm({ 
   initialData, 
@@ -17,7 +20,6 @@ export default function TransactionForm({
 }) {
   const [loading, setLoading] = useState(false);
   
-  // State lokal untuk menampung nilai input
   const [formData, setFormData] = useState({
     description: "",
     amount: "",
@@ -26,7 +28,6 @@ export default function TransactionForm({
     date: new Date().toISOString().split('T')[0]
   });
 
-  // Load initialData jika mode Edit
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -39,18 +40,31 @@ export default function TransactionForm({
     }
   }, [initialData]);
 
-  // Fungsi saat AI selesai scan
+  // --- LOGIC BARU: Handle Hasil Scan ---
   const handleScanResult = (result: any) => {
+    // 1. Normalisasi Kategori
+    // Jika kategori dari AI tidak ada di daftar kita, paksa jadi "Belanja"
+    let cleanCategory = result.category;
+    if (!VALID_CATEGORIES.includes(cleanCategory)) {
+        // Mapping sederhana (bisa ditambah)
+        if (cleanCategory.toLowerCase().includes("office")) cleanCategory = "Belanja";
+        else if (cleanCategory.toLowerCase().includes("food")) cleanCategory = "Makan";
+        else cleanCategory = "Lainnya"; 
+    }
+
+    // 2. Isi Form
     setFormData((prev) => ({
       ...prev,
       description: result.description || "Struk Scan",
       amount: result.amount || "",
-      category: result.category || "Belanja",
+      category: cleanCategory, // Pakai kategori yang sudah dibersihkan
       date: result.date || new Date().toISOString().split('T')[0]
     }));
+
+    // 3. Beri info ke user
+    alert("Scan Berhasil! Silakan cek data, lalu klik tombol Simpan.");
   };
 
-  // Helper agar input bisa diketik manual juga
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -66,6 +80,7 @@ export default function TransactionForm({
       onSuccess();
     } catch (error) {
       console.error(error);
+      alert("Gagal menyimpan data.");
     } finally {
       setLoading(false);
     }
@@ -73,12 +88,13 @@ export default function TransactionForm({
 
   return (
     <div className="mt-4">
-      {/* Tombol Scan hanya muncul di mode Tambah Baru (bukan Edit) */}
+      {/* Tombol Scan */}
       {!initialData && (
         <ScanButton onScanComplete={handleScanResult} />
       )}
 
-      <form action={handleSubmit} className="space-y-4">
+      <form action={handleSubmit} className="space-y-4 border-t pt-4 mt-4">
+        {/* Nama Transaksi */}
         <div className="space-y-2">
           <Label>Nama Transaksi</Label>
           <Input 
@@ -87,21 +103,25 @@ export default function TransactionForm({
             onChange={(e) => handleChange("description", e.target.value)}
             required 
             placeholder="Cth: Beli Kopi" 
+            className="font-bold text-gray-800"
           />
         </div>
 
+        {/* Nominal */}
         <div className="space-y-2">
-          <Label>Nominal</Label>
+          <Label>Nominal (Rp)</Label>
           <Input 
             type="number" 
             name="amount" 
             value={formData.amount} 
             onChange={(e) => handleChange("amount", e.target.value)}
             required 
-            placeholder="15000" 
+            placeholder="0" 
+            className="text-lg"
           />
         </div>
 
+        {/* Tipe & Kategori */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Tipe</Label>
@@ -125,19 +145,19 @@ export default function TransactionForm({
               value={formData.category} 
               onValueChange={(val) => handleChange("category", val)}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih Kategori" />
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Makan">Makan</SelectItem>
-                <SelectItem value="Transport">Transport</SelectItem>
-                <SelectItem value="Hiburan">Hiburan</SelectItem>
-                <SelectItem value="Belanja">Belanja</SelectItem>
-                <SelectItem value="Tagihan">Tagihan</SelectItem>
-                <SelectItem value="Lainnya">Lainnya</SelectItem>
+                {VALID_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
 
+        {/* Tanggal */}
         <div className="space-y-2">
           <Label>Tanggal</Label>
           <Input 
@@ -148,8 +168,13 @@ export default function TransactionForm({
           />
         </div>
 
-        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-          {loading ? "Menyimpan..." : (initialData ? "Update Transaksi" : "Simpan Baru")}
+        {/* TOMBOL SIMPAN (PENTING) */}
+        <Button 
+            type="submit" 
+            className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg font-bold shadow-lg" 
+            disabled={loading}
+        >
+          {loading ? "Menyimpan..." : (initialData ? "Update Transaksi" : "Simpan Transaksi")}
         </Button>
       </form>
     </div>
