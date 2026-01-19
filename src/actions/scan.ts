@@ -2,81 +2,88 @@
 
 export async function scanReceiptAction(formData: FormData) {
   const API_KEY = process.env.GEMINI_API_KEY;
-
-  if (!API_KEY) {
-    throw new Error("API Key Gemini hilang. Cek Environment Variables di Vercel.");
-  }
+  if (!API_KEY) throw new Error("API Key hilang. Cek Vercel.");
 
   const file = formData.get("file") as File;
-  if (!file) {
-    throw new Error("Tidak ada gambar yang diupload");
-  }
+  if (!file) throw new Error("Gambar tidak ditemukan.");
 
-  try {
-    // 1. Konversi Gambar ke Base64 (Manual)
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Image = buffer.toString("base64");
+  // 1. Convert Image
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const base64Image = buffer.toString("base64");
+  const mimeType = file.type || "image/jpeg";
 
-    // 2. Siapkan Data JSON untuk dikirim ke Google
+  // Fungsi Helper untuk memanggil API
+  async function callGemini(modelName: string) {
+    console.log(`📡 Mencoba connect dengan model: ${modelName}...`);
+    
     const requestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              text: `Analisa gambar struk belanja ini. Ekstrak data ke JSON murni:
-              {
-                "description": "Nama Toko (Singkat)",
-                "amount": 0 (Angka saja, tanpa titik/koma),
-                "date": "YYYY-MM-DD" (Asumsikan 2026 jika tidak ada tahun),
-                "category": "Makan/Transport/Hiburan/Belanja/Tagihan/Lainnya" (Pilih satu yg paling cocok)
-              }
-              Return ONLY raw JSON string without markdown blocks.`
-            },
-            {
-              inline_data: {
-                mime_type: file.type || "image/jpeg",
-                data: base64Image
-              }
-            }
-          ]
-        }
-      ]
+      contents: [{
+        parts: [
+          { text: "Analisa struk ini. Return JSON murni: {description, amount (number), date (YYYY-MM-DD), category}. Tanpa markdown." },
+          { inline_data: { mime_type: mimeType, data: base64Image } }
+        ]
+      }]
     };
 
-    // 3. Panggil API Google Langsung (Tanpa SDK)
-    // Kita pakai model 'gemini-1.5-flash' yang paling standar URL-nya
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
       }
     );
 
-    // 4. Cek apakah Google menolak (Error Handling Manual)
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Gemini API Error:", JSON.stringify(errorData, null, 2));
-      throw new Error(`Gagal memproses AI: ${errorData.error?.message || response.statusText}`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || res.statusText);
+    }
+    return res.json();
+  }
+
+  // Fungsi untuk mengecek model apa yang SEBENARNYA tersedia
+  async function listAvailableModels() {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
+      const data = await res.json();
+      console.log("📋 DAFTAR MODEL YANG TERSEDIA UNTUK KEY INI:");
+      console.log(data.models?.map((m: any) => m.name).join(", ") || "Tidak ada model ditemukan");
+    } catch (e) {
+      console.error("Gagal list model:", e);
+    }
+  }
+
+  try {
+    // USAHA 1: Coba model terbaru (Flash)
+    let data;
+    try {
+      data = await callGemini('gemini-1.5-flash');
+    } catch (error: any) {
+      console.error("❌ Gagal dengan gemini-1.5-flash.");
+      
+      // Jika error 404, kita cari tahu kenapa & coba model lama
+      if (error.message.includes("not found") || error.message.includes("404")) {
+        await listAvailableModels(); // <--- INI AKAN MENCETAK LIST MODEL DI LOGS VERCEL
+        
+        console.log("⚠️ Mengalihkan ke model cadangan: gemini-pro-vision");
+        data = await callGemini('gemini-pro-vision'); // Model lama (biasanya lebih stabil di akun lama)
+      } else {
+        throw error;
+      }
     }
 
-    // 5. Olah Hasilnya
-    const data = await response.json();
-    const rawText = data.candidates[0].content.parts[0].text;
+    // Olah Data
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) throw new Error("AI tidak merespon teks.");
     
-    // Bersihkan format Markdown (```json ... ```)
     const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    console.log("✅ Sukses Scan:", cleanText);
+    console.log("✅ Sukses:", cleanText);
     
     return JSON.parse(cleanText);
 
   } catch (error: any) {
-    console.error("❌ Error di Server Action:", error);
-    throw new Error(error.message || "Gagal membaca struk.");
+    console.error("🔥 FINAL ERROR:", error.message);
+    throw new Error(`Gagal Scan: ${error.message}`);
   }
 }
