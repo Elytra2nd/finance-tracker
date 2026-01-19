@@ -125,7 +125,6 @@ async function checkBudgetAndNotify(newExpenseAmount: number) {
     if (totalAfterTransaction > budgetLimit) {
       const msg = `⚠️ *PERINGATAN BUDGET!* ⚠️\n\nPengeluaranmu: Rp ${new Intl.NumberFormat("id-ID").format(totalAfterTransaction)}\nBatas Budget: Rp ${new Intl.NumberFormat("id-ID").format(budgetLimit)}\n\nSudah *over budget* nih! Hemat ya! 💸`;
       
-      // Kirim WA
       await sendWhatsApp(msg);
 
       // Kirim Email (Opsional)

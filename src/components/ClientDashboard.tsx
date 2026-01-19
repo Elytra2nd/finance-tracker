@@ -6,110 +6,141 @@ import CategoryChart from "./CategoryChart";
 import TransactionItem from "./TransactionItem";
 import TransactionForm from "./TransactionForm";
 import ExportButton from "./ExportButton"; 
-import BudgetSettings from "./BudgetSettings"; // <-- Import Komponen Budget
+import BudgetSettings from "./BudgetSettings";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ArrowUpCircle, ArrowDownCircle, Wallet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ClientDashboard({ transactions, totalIncome, totalExpense, balance, initialBudget }: any) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
 
-  // Fungsi saat tombol Edit diklik
   const handleEdit = (transaction: any) => {
     setEditingTransaction(transaction);
     setIsSheetOpen(true);
   };
 
-  // Fungsi saat tombol Tambah (+) diklik
   const handleAddNew = () => {
-    setEditingTransaction(null); // Pastikan form kosong
+    setEditingTransaction(null);
     setIsSheetOpen(true);
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-24 font-sans relative">
-      {/* --- HEADER --- */}
-      <motion.div 
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-blue-600 text-white p-6 pb-12 rounded-b-3xl shadow-lg"
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-bold">Keuanganku 🚀</h1>
-          
-          {/* Tombol Setting Budget di Pojok Kanan */}
-          <BudgetSettings currentBudget={initialBudget} />
+    <main className="min-h-screen bg-gray-50 pb-28 font-sans">
+      {/* --- HEADER MODERN DENGAN GRADASI --- */}
+      <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 pt-8 pb-20 px-6 rounded-b-[2.5rem] shadow-xl overflow-hidden">
+        {/* Dekorasi Background */}
+        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+           <div className="absolute top-[-50px] right-[-50px] w-40 h-40 bg-white rounded-full blur-3xl"></div>
+           <div className="absolute bottom-[-20px] left-[-20px] w-32 h-32 bg-blue-300 rounded-full blur-2xl"></div>
         </div>
 
-        <div className="text-center">
-          <p className="text-blue-100 text-sm mb-1">Total Saldo</p>
-          <h2 className="text-4xl font-bold">{formatRupiah(balance)}</h2>
-        </div>
-      </motion.div>
-
-      {/* --- SUMMARY CARDS & EXPORT --- */}
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="px-6 -mt-8 mb-6"
-      >
-        {/* Kartu Income/Expense */}
-        <div className="bg-white rounded-2xl shadow-md p-4 flex justify-between items-center border border-gray-100">
-          <div className="w-1/2 border-r border-gray-100 pr-4">
-            <p className="text-xs text-gray-500 mb-1">Pemasukan</p>
-            <p className="font-bold text-green-600 truncate">{formatRupiah(totalIncome)}</p>
+        <div className="relative z-10">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <p className="text-blue-100 text-sm">Selamat Datang,</p>
+              <h1 className="text-2xl font-bold text-white">Boss Keuangan 👋</h1>
+            </div>
+            {/* Tombol Setting Budget */}
+            <div className="bg-white/10 p-1 rounded-xl backdrop-blur-md">
+               <BudgetSettings currentBudget={initialBudget} />
+            </div>
           </div>
-          <div className="w-1/2 pl-4">
-            <p className="text-xs text-gray-500 mb-1">Pengeluaran</p>
-            <p className="font-bold text-red-600 truncate">{formatRupiah(totalExpense)}</p>
+
+          <div className="mt-4">
+            <p className="text-blue-100 text-sm mb-1 flex items-center gap-2">
+              <Wallet className="w-4 h-4" /> Total Saldo
+            </p>
+            <h2 className="text-4xl font-extrabold text-white tracking-tight">
+              {formatRupiah(balance)}
+            </h2>
           </div>
         </div>
+      </div>
 
-        {/* --- TOMBOL EXPORT --- */}
-        <div className="flex justify-end mt-3">
+      <div className="px-6 -mt-12 relative z-20 space-y-6">
+        
+        {/* --- SUMMARY CARDS (GLASS EFFECT) --- */}
+        <motion.div 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-white rounded-3xl shadow-lg p-5 flex justify-between items-center border border-gray-100"
+        >
+          <div className="flex items-center gap-3 w-1/2 border-r border-gray-100 pr-4">
+            <div className="p-3 bg-green-50 rounded-full">
+              <ArrowDownCircle className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Pemasukan</p>
+              <p className="font-bold text-gray-800 text-sm md:text-base truncate">{formatRupiah(totalIncome)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 w-1/2 pl-4">
+            <div className="p-3 bg-red-50 rounded-full">
+              <ArrowUpCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Pengeluaran</p>
+              <p className="font-bold text-gray-800 text-sm md:text-base truncate">{formatRupiah(totalExpense)}</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* --- TOMBOL EXPORT (Kecil di kanan) --- */}
+        <div className="flex justify-end">
            <ExportButton transactions={transactions} />
         </div>
-      </motion.div>
 
-      {/* --- CHART --- */}
-      <div className="px-6">
-        <CategoryChart transactions={transactions} />
-      </div>
+        {/* --- CHART SECTION --- */}
+        <motion.div
+           initial={{ scale: 0.95, opacity: 0 }}
+           animate={{ scale: 1, opacity: 1 }}
+           transition={{ delay: 0.2 }}
+        >
+          <CategoryChart transactions={transactions} />
+        </motion.div>
 
-      {/* --- LIST TRANSAKSI --- */}
-      <div className="px-6 mt-4">
-        <h3 className="font-bold text-gray-800 mb-4 text-lg">Riwayat Transaksi</h3>
-        <div className="space-y-3">
-          <AnimatePresence>
-            {transactions.map((t: any) => (
-              <TransactionItem key={t.id} transaction={t} onEdit={handleEdit} />
-            ))}
-          </AnimatePresence>
+        {/* --- RECENT TRANSACTIONS --- */}
+        <div>
+          <h3 className="font-bold text-gray-800 mb-4 text-lg px-1">Riwayat Transaksi</h3>
+          <div className="space-y-3">
+            <AnimatePresence>
+              {transactions.length > 0 ? (
+                transactions.map((t: any) => (
+                  <TransactionItem key={t.id} transaction={t} onEdit={handleEdit} />
+                ))
+              ) : (
+                <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-dashed">
+                  <p>Belum ada transaksi.</p>
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      {/* --- SHEET (FORM MODAL) & FAB --- */}
+      {/* --- FLOATING ACTION BUTTON (FAB) --- */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetTrigger asChild>
-          <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50">
+          <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none">
             <Button 
               onClick={handleAddNew}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full h-14 w-14 shadow-xl flex items-center justify-center transition-all hover:scale-105"
+              className="pointer-events-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full h-16 w-16 shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 border-4 border-gray-50"
             >
               <Plus className="w-8 h-8" />
             </Button>
           </div>
         </SheetTrigger>
         
-        <SheetContent side="bottom" className="rounded-t-3xl h-[85vh]">
-          <SheetHeader>
-            <SheetTitle>{editingTransaction ? "Edit Transaksi" : "Transaksi Baru"}</SheetTitle>
+        <SheetContent side="bottom" className="rounded-t-[2rem] h-[85vh] p-6">
+          <SheetHeader className="mb-6">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
+            <SheetTitle className="text-center text-xl">
+              {editingTransaction ? "Edit Transaksi" : "Tambah Transaksi Baru"}
+            </SheetTitle>
           </SheetHeader>
           
-          {/* Form dipanggil di sini */}
           <TransactionForm 
             initialData={editingTransaction} 
             onSuccess={() => setIsSheetOpen(false)} 

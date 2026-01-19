@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect } from "react";
 import { addTransactionAction, updateTransactionAction } from "@/actions/transaction";
 import ScanButton from "./ScanButton";
+import { toast } from "sonner"; // <-- Import Toaster
 
 // Daftar Kategori Valid sesuai Aplikasi
 const VALID_CATEGORIES = ["Makan", "Transport", "Hiburan", "Belanja", "Tagihan", "Lainnya"];
@@ -43,7 +44,6 @@ export default function TransactionForm({
   // --- LOGIC BARU: Handle Hasil Scan ---
   const handleScanResult = (result: any) => {
     // 1. Normalisasi Kategori
-    // Jika kategori dari AI tidak ada di daftar kita, paksa jadi "Belanja"
     let cleanCategory = result.category;
     if (!VALID_CATEGORIES.includes(cleanCategory)) {
         // Mapping sederhana (bisa ditambah)
@@ -57,12 +57,14 @@ export default function TransactionForm({
       ...prev,
       description: result.description || "Struk Scan",
       amount: result.amount || "",
-      category: cleanCategory, // Pakai kategori yang sudah dibersihkan
+      category: cleanCategory, 
       date: result.date || new Date().toISOString().split('T')[0]
     }));
 
-    // 3. Beri info ke user
-    alert("Scan Berhasil! Silakan cek data, lalu klik tombol Simpan.");
+    // 3. Beri info ke user via Toast (Bukan Alert lagi)
+    toast.success("Scan Berhasil!", {
+        description: "Data telah diisi otomatis. Silakan cek dan simpan."
+    });
   };
 
   const handleChange = (field: string, value: string) => {
@@ -74,13 +76,15 @@ export default function TransactionForm({
     try {
       if (initialData) {
         await updateTransactionAction(initialData.id, data);
+        toast.success("Transaksi berhasil diupdate!"); // <-- Toast Sukses Update
       } else {
         await addTransactionAction(data);
+        toast.success("Transaksi berhasil disimpan!"); // <-- Toast Sukses Simpan
       }
       onSuccess();
     } catch (error) {
       console.error(error);
-      alert("Gagal menyimpan data.");
+      toast.error("Gagal menyimpan data."); // <-- Toast Error
     } finally {
       setLoading(false);
     }
