@@ -1,69 +1,82 @@
 'use server'
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 export async function scanReceiptAction(formData: FormData) {
-  // Cek API Key di dalam function agar aman saat runtime
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key Gemini tidak ditemukan. Cek Vercel Environment Variables.");
+  const API_KEY = process.env.GEMINI_API_KEY;
+
+  if (!API_KEY) {
+    throw new Error("API Key Gemini hilang. Cek Environment Variables di Vercel.");
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
   const file = formData.get("file") as File;
-
   if (!file) {
     throw new Error("Tidak ada gambar yang diupload");
   }
 
   try {
-    // 1. Konversi File Gambar ke Base64
+    // 1. Konversi Gambar ke Base64 (Manual)
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const base64Image = buffer.toString("base64");
 
-    // 2. Siapkan Model - GUNAKAN VERSI '001' AGAR STABIL
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+    // 2. Siapkan Data JSON untuk dikirim ke Google
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            {
+              text: `Analisa gambar struk belanja ini. Ekstrak data ke JSON murni:
+              {
+                "description": "Nama Toko (Singkat)",
+                "amount": 0 (Angka saja, tanpa titik/koma),
+                "date": "YYYY-MM-DD" (Asumsikan 2026 jika tidak ada tahun),
+                "category": "Makan/Transport/Hiburan/Belanja/Tagihan/Lainnya" (Pilih satu yg paling cocok)
+              }
+              Return ONLY raw JSON string without markdown blocks.`
+            },
+            {
+              inline_data: {
+                mime_type: file.type || "image/jpeg",
+                data: base64Image
+              }
+            }
+          ]
+        }
+      ]
+    };
 
-    // 3. Buat Prompt
-    const prompt = `
-      Analisa gambar struk belanja ini. Ekstrak informasi berikut ke dalam format JSON murni:
-      1. "description": Nama merchant atau toko (singkat saja).
-      2. "amount": Total bayar (hanya angka, tanpa Rp atau titik).
-      3. "date": Tanggal transaksi dalam format YYYY-MM-DD. Jika tidak ada tahun, asumsikan 2026.
-      4. "category": Tebak kategori transaksi ini. Pilih SALAH SATU dari: "Makan", "Transport", "Hiburan", "Belanja", "Tagihan", "Lainnya".
-      
-      Jangan gunakan markdown block (seperti \`\`\`json). Langsung return raw JSON string saja.
-    `;
-
-    const result = await model.generateContent([
-      prompt,
+    // 3. Panggil API Google Langsung (Tanpa SDK)
+    // Kita pakai model 'gemini-1.5-flash' yang paling standar URL-nya
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
       {
-        inlineData: {
-          data: base64Image,
-          mimeType: file.type || "image/jpeg",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
         },
-      },
-    ]);
+        body: JSON.stringify(requestBody)
+      }
+    );
 
-    const response = await result.response;
-    const text = response.text();
+    // 4. Cek apakah Google menolak (Error Handling Manual)
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Gemini API Error:", JSON.stringify(errorData, null, 2));
+      throw new Error(`Gagal memproses AI: ${errorData.error?.message || response.statusText}`);
+    }
 
-    // Bersihkan format
-    const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    // 5. Olah Hasilnya
+    const data = await response.json();
+    const rawText = data.candidates[0].content.parts[0].text;
     
-    console.log("AI Response:", cleanText);
-
+    // Bersihkan format Markdown (```json ... ```)
+    const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    console.log("✅ Sukses Scan:", cleanText);
+    
     return JSON.parse(cleanText);
 
   } catch (error: any) {
-    console.error("Gagal scan struk:", error);
-    
-    // Error handling spesifik
-    if (error.message.includes("404")) {
-      throw new Error("Model AI sedang sibuk atau tidak ditemukan. Coba lagi nanti.");
-    }
-    
-    throw new Error("Gagal membaca struk. Pastikan gambar jelas.");
+    console.error("❌ Error di Server Action:", error);
+    throw new Error(error.message || "Gagal membaca struk.");
   }
 }
