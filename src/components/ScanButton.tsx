@@ -9,24 +9,68 @@ export default function ScanButton({ onScanComplete }: { onScanComplete: (data: 
   const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- FUNGSI KOMPRESI GAMBAR ---
+  const compressImage = async (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
+      };
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        // Kita set ukuran maksimal lebar 800px (cukup untuk AI membaca teks)
+        const maxWidth = 800;
+        const scale = maxWidth / img.width;
+        
+        // Jika gambar kecil, jangan di-resize
+        if (scale >= 1) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+        } else {
+            canvas.width = maxWidth;
+            canvas.height = img.height * scale;
+        }
+
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Kompres ke JPEG kualitas 0.7 (70%)
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Gagal kompresi"));
+        }, "image/jpeg", 0.7);
+      };
+
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsScanning(true);
-    const formData = new FormData();
-    formData.append("file", file);
 
     try {
-      // Panggil AI
+      // 1. Kompres dulu sebelum kirim
+      const compressedBlob = await compressImage(file);
+      
+      // 2. Masukkan ke FormData
+      const formData = new FormData();
+      formData.append("file", compressedBlob, "receipt.jpg");
+
+      // 3. Kirim ke Server Action
       const data = await scanReceiptAction(formData);
-      // Kirim hasil data ke Form utama
       onScanComplete(data);
     } catch (error) {
-      alert("Gagal memproses gambar. Coba lagi.");
+      console.error(error);
+      alert("Gagal memproses gambar. Pastikan koneksi internet lancar.");
     } finally {
       setIsScanning(false);
-      // Reset input agar bisa scan file yang sama lagi kalau mau
       if (fileInputRef.current) fileInputRef.current.value = ""; 
     }
   };
@@ -36,7 +80,7 @@ export default function ScanButton({ onScanComplete }: { onScanComplete: (data: 
       <input
         type="file"
         accept="image/*"
-        capture="environment" // Ini perintah agar HP langsung buka kamera belakang
+        capture="environment"
         className="hidden"
         ref={fileInputRef}
         onChange={handleFileChange}
