@@ -5,12 +5,14 @@ import { formatRupiah } from "@/lib/utils";
 import CategoryChart from "./CategoryChart";
 import TransactionItem from "./TransactionItem";
 import TransactionForm from "./TransactionForm";
+import ExportButton from "./ExportButton"; 
+import BudgetSettings from "./BudgetSettings"; // <-- Import Komponen Budget
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function ClientDashboard({ transactions, totalIncome, totalExpense, balance }: any) {
+export default function ClientDashboard({ transactions, totalIncome, totalExpense, balance, initialBudget }: any) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
 
@@ -36,23 +38,27 @@ export default function ClientDashboard({ transactions, totalIncome, totalExpens
       >
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-bold">Keuanganku 🚀</h1>
+          
+          {/* Tombol Setting Budget di Pojok Kanan */}
+          <BudgetSettings currentBudget={initialBudget} />
         </div>
+
         <div className="text-center">
           <p className="text-blue-100 text-sm mb-1">Total Saldo</p>
           <h2 className="text-4xl font-bold">{formatRupiah(balance)}</h2>
         </div>
       </motion.div>
 
-      {/* --- SUMMARY CARDS --- */}
+      {/* --- SUMMARY CARDS & EXPORT --- */}
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.1 }}
         className="px-6 -mt-8 mb-6"
       >
+        {/* Kartu Income/Expense */}
         <div className="bg-white rounded-2xl shadow-md p-4 flex justify-between items-center border border-gray-100">
-           {/* Sama seperti sebelumnya */}
-           <div className="w-1/2 border-r border-gray-100 pr-4">
+          <div className="w-1/2 border-r border-gray-100 pr-4">
             <p className="text-xs text-gray-500 mb-1">Pemasukan</p>
             <p className="font-bold text-green-600 truncate">{formatRupiah(totalIncome)}</p>
           </div>
@@ -60,6 +66,11 @@ export default function ClientDashboard({ transactions, totalIncome, totalExpens
             <p className="text-xs text-gray-500 mb-1">Pengeluaran</p>
             <p className="font-bold text-red-600 truncate">{formatRupiah(totalExpense)}</p>
           </div>
+        </div>
+
+        {/* --- TOMBOL EXPORT --- */}
+        <div className="flex justify-end mt-3">
+           <ExportButton transactions={transactions} />
         </div>
       </motion.div>
 

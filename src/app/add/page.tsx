@@ -2,6 +2,15 @@ import { addTransactionAction } from "@/actions/transaction";
 import Link from "next/link";
 
 export default function AddPage() {
+  
+  // --- FIX TYPE ERROR ---
+  // Kita buat wrapper agar return type-nya menjadi 'void' (kosong)
+  // sesuai yang diminta oleh tag <form>
+  async function handleSubmit(formData: FormData) {
+    "use server"; // Menandakan ini berjalan di server
+    await addTransactionAction(formData);
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 p-4">
       {/* Header Mobile */}
@@ -12,7 +21,8 @@ export default function AddPage() {
         <h1 className="text-xl font-bold text-gray-800">Tambah Transaksi</h1>
       </div>
 
-      <form action={addTransactionAction} className="bg-white p-6 rounded-2xl shadow-sm space-y-5">
+      {/* Gunakan 'handleSubmit' (wrapper) sebagai action */}
+      <form action={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm space-y-5">
         
         {/* Input Nama Transaksi */}
         <div>
