@@ -8,24 +8,24 @@ import TransactionItem from "./TransactionItem";
 import TransactionForm from "./TransactionForm";
 import ExportButton from "./ExportButton"; 
 import BudgetSettings from "./BudgetSettings";
-import MonthFilter from "./MonthFilter"; // <-- Import Filter Baru
+import MonthFilter from "./MonthFilter";
+import AIAdvisor from "./AIAdvisor"; 
+import SavingsGoal from "./SavingsGoal"; // <-- Import Savings Goal
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowUpCircle, ArrowDownCircle, Wallet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function ClientDashboard({ transactions, initialBudget }: any) {
+export default function ClientDashboard({ transactions, initialBudget, initialGoal }: any) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
   
-  // STATE BARU: Bulan yang dipilih (Default: Hari ini)
+  // STATE: Bulan yang dipilih (Default: Hari ini)
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  // --- LOGIC FILTERING & MENGHITUNG ULANG TOTAL ---
-  // Kita pakai useMemo agar tidak menghitung ulang terus menerus (biar performa cepat)
+  // --- LOGIC FILTERING & HITUNG TOTAL ---
   const { filteredTransactions, totalIncome, totalExpense, balance } = useMemo(() => {
-    
-    // 1. Filter Array berdasarkan Bulan & Tahun yang dipilih
+    // 1. Filter berdasarkan Bulan
     const filtered = transactions.filter((t: any) => {
       const tDate = new Date(t.date);
       return (
@@ -34,7 +34,7 @@ export default function ClientDashboard({ transactions, initialBudget }: any) {
       );
     });
 
-    // 2. Hitung Total Baru berdasarkan data yang sudah difilter
+    // 2. Hitung Total
     const income = filtered
       .filter((t: any) => t.type === 'Income')
       .reduce((sum: number, t: any) => sum + t.amount, 0);
@@ -49,7 +49,7 @@ export default function ClientDashboard({ transactions, initialBudget }: any) {
       totalExpense: expense,
       balance: income - expense
     };
-  }, [transactions, selectedMonth]); // Jalankan ulang hanya jika data / bulan berubah
+  }, [transactions, selectedMonth]); 
 
   // --- HANDLER UI ---
   const handleEdit = (transaction: any) => {
@@ -73,23 +73,22 @@ export default function ClientDashboard({ transactions, initialBudget }: any) {
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto">
-          {/* Top Bar: Title & Month Filter */}
+          {/* Top Bar */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-blue-100 text-sm">Dashboard Keuangan</p>
                 <h1 className="text-2xl font-bold text-white">Halo, Boss 👋</h1>
               </div>
-              {/* Tombol Setting Budget (Versi Mobile: Muncul di kanan judul) */}
               <div className="bg-white/10 p-1 rounded-xl backdrop-blur-md md:hidden">
                  <BudgetSettings currentBudget={initialBudget} />
               </div>
             </div>
 
-            {/* FILTER BULAN (Komponen Baru) */}
-            <div className="flex gap-2">
+            {/* Area Filter & AI */}
+            <div className="flex flex-wrap gap-2 md:justify-end">
+               <AIAdvisor transactions={filteredTransactions} selectedDate={selectedMonth} />
                <MonthFilter currentDate={selectedMonth} onMonthChange={setSelectedMonth} />
-               {/* Tombol Setting Budget (Versi Desktop) */}
                <div className="bg-white/10 p-1 rounded-xl backdrop-blur-md hidden md:block">
                  <BudgetSettings currentBudget={initialBudget} />
                </div>
@@ -100,7 +99,6 @@ export default function ClientDashboard({ transactions, initialBudget }: any) {
           <div>
             <p className="text-blue-100 text-sm mb-1 flex items-center gap-2">
               <Wallet className="w-4 h-4" /> Saldo Bulan Ini
-              {/* Saldo bulan ini = Pemasukan Bulan Ini - Pengeluaran Bulan Ini */}
             </p>
             <h2 className="text-4xl font-extrabold text-white tracking-tight">
               {formatRupiah(balance)}
@@ -137,16 +135,27 @@ export default function ClientDashboard({ transactions, initialBudget }: any) {
           </div>
         </motion.div>
 
+         {/* --- WIDGET TARGET TABUNGAN (BARU) --- */}
+         <motion.div
+           initial={{ scale: 0.95, opacity: 0 }}
+           animate={{ scale: 1, opacity: 1 }}
+           transition={{ delay: 0.1 }}
+         >
+            <SavingsGoal 
+              currentBalance={balance} 
+              goalName={initialGoal?.name}
+              goalAmount={initialGoal?.amount}
+            />
+         </motion.div>
+
         {/* --- EXPORT --- */}
         <div className="flex justify-end">
-          {/* Kirim data yang sudah difilter agar Excelnya juga per bulan */}
            <ExportButton transactions={filteredTransactions} />
         </div>
 
         {/* --- CHARTS --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }}>
-                {/* Kirim filteredTransactions ke Chart */}
                 <CategoryChart transactions={filteredTransactions} />
             </motion.div>
 
