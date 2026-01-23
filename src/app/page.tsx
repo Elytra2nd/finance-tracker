@@ -1,5 +1,3 @@
-import { formatRupiah } from "@/lib/utils";
-import CategoryChart from "@/components/CategoryChart";
 import ClientDashboard from "@/components/ClientDashboard";
 
 // --- 1. FETCH TRANSAKSI (Hanya Income & Expense) ---
@@ -16,8 +14,7 @@ async function getTransactions() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      page_size: 50,
-      // FILTER PENTING: Jangan ambil row 'Budget', cuma Income & Expense
+      page_size: 100, // <--- UPDATE: Ambil 100 data agar bulan lalu terbawa
       filter: {
         or: [
           { property: "Type", select: { equals: "Income" } },
@@ -73,31 +70,21 @@ async function getBudget() {
 
 // --- KOMPONEN UTAMA ---
 export default async function Home() {
-  // Jalankan kedua fetch secara paralel agar lebih cepat
+  // Jalankan kedua fetch secara paralel
   const [transactions, currentBudget] = await Promise.all([
     getTransactions(),
     getBudget()
   ]);
 
-  // Hitung Data Summary di Server
-  const totalIncome = transactions
-    .filter((t: any) => t.type === "Income")
-    .reduce((sum: number, t: any) => sum + t.amount, 0);
-
-  const totalExpense = transactions
-    .filter((t: any) => t.type === "Expense")
-    .reduce((sum: number, t: any) => sum + t.amount, 0);
-
-  const balance = totalIncome - totalExpense;
+  // CATATAN:
+  // Kita TIDAK lagi menghitung totalIncome/Expense di sini.
+  // Perhitungan dipindahkan ke <ClientDashboard /> agar bisa berubah
+  // sesuai Filter Bulan yang dipilih user.
 
   return (
-    // Oper data ke Client Component
     <ClientDashboard 
       transactions={transactions} 
-      totalIncome={totalIncome} 
-      totalExpense={totalExpense} 
-      balance={balance}
-      initialBudget={currentBudget} // <-- Oper data budget ke UI
+      initialBudget={currentBudget} 
     />
   );
 }
