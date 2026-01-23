@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect } from "react";
 import { addTransactionAction, updateTransactionAction } from "@/actions/transaction";
 import ScanButton from "./ScanButton";
-import { toast } from "sonner"; // <-- Import Toaster
+import { toast } from "sonner";
+import { Pencil, List } from "lucide-react";
 
-// Daftar Kategori Valid sesuai Aplikasi
-const VALID_CATEGORIES = ["Makan", "Transport", "Hiburan", "Belanja", "Tagihan", "Lainnya"];
+// Daftar Kategori Default
+const DEFAULT_CATEGORIES = ["Makan", "Transport", "Hiburan", "Belanja", "Tagihan", "Lainnya"];
 
 export default function TransactionForm({ 
   initialData, 
@@ -21,6 +22,9 @@ export default function TransactionForm({
 }) {
   const [loading, setLoading] = useState(false);
   
+  // State untuk Mode Input Kategori (Select vs Manual)
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+
   const [formData, setFormData] = useState({
     description: "",
     amount: "",
@@ -31,6 +35,10 @@ export default function TransactionForm({
 
   useEffect(() => {
     if (initialData) {
+      // Cek apakah kategori ada di daftar default
+      const isDefault = DEFAULT_CATEGORIES.includes(initialData.category);
+      setIsCustomCategory(!isDefault); // Jika tidak ada di daftar, berarti custom
+      
       setFormData({
         description: initialData.description,
         amount: initialData.amount,
@@ -41,18 +49,24 @@ export default function TransactionForm({
     }
   }, [initialData]);
 
-  // --- LOGIC BARU: Handle Hasil Scan ---
   const handleScanResult = (result: any) => {
-    // 1. Normalisasi Kategori
+    // Saat scan, kita anggap itu kategori manual (custom) agar tidak dipaksa ke default
+    // Kecuali AI benar-benar yakin.
     let cleanCategory = result.category;
-    if (!VALID_CATEGORIES.includes(cleanCategory)) {
-        // Mapping sederhana (bisa ditambah)
-        if (cleanCategory.toLowerCase().includes("office")) cleanCategory = "Belanja";
-        else if (cleanCategory.toLowerCase().includes("food")) cleanCategory = "Makan";
-        else cleanCategory = "Lainnya"; 
+    let isCustom = false;
+
+    // Logic pembersihan kategori sederhana
+    if (!DEFAULT_CATEGORIES.includes(cleanCategory)) {
+        // Coba mapping ke default dulu
+        if (cleanCategory.toLowerCase().includes("food")) cleanCategory = "Makan";
+        else if (cleanCategory.toLowerCase().includes("office")) cleanCategory = "Belanja";
+        else {
+           // Jika tidak nemu mapping, biarkan apa adanya (Custom)
+           isCustom = true;
+        }
     }
 
-    // 2. Isi Form
+    setIsCustomCategory(isCustom);
     setFormData((prev) => ({
       ...prev,
       description: result.description || "Struk Scan",
@@ -61,10 +75,7 @@ export default function TransactionForm({
       date: result.date || new Date().toISOString().split('T')[0]
     }));
 
-    // 3. Beri info ke user via Toast (Bukan Alert lagi)
-    toast.success("Scan Berhasil!", {
-        description: "Data telah diisi otomatis. Silakan cek dan simpan."
-    });
+    toast.success("Scan Berhasil!", { description: "Data terisi otomatis." });
   };
 
   const handleChange = (field: string, value: string) => {
@@ -76,15 +87,15 @@ export default function TransactionForm({
     try {
       if (initialData) {
         await updateTransactionAction(initialData.id, data);
-        toast.success("Transaksi berhasil diupdate!"); // <-- Toast Sukses Update
+        toast.success("Transaksi berhasil diupdate!");
       } else {
         await addTransactionAction(data);
-        toast.success("Transaksi berhasil disimpan!"); // <-- Toast Sukses Simpan
+        toast.success("Transaksi berhasil disimpan!");
       }
       onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error("Gagal menyimpan data."); // <-- Toast Error
+      toast.error("Gagal menyimpan data.");
     } finally {
       setLoading(false);
     }
@@ -92,13 +103,11 @@ export default function TransactionForm({
 
   return (
     <div className="mt-4">
-      {/* Tombol Scan */}
       {!initialData && (
         <ScanButton onScanComplete={handleScanResult} />
       )}
 
-      <form action={handleSubmit} className="space-y-4 border-t pt-4 mt-4">
-        {/* Nama Transaksi */}
+      <form action={handleSubmit} className="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
         <div className="space-y-2">
           <Label>Nama Transaksi</Label>
           <Input 
@@ -107,11 +116,10 @@ export default function TransactionForm({
             onChange={(e) => handleChange("description", e.target.value)}
             required 
             placeholder="Cth: Beli Kopi" 
-            className="font-bold text-gray-800"
+            className="font-bold text-gray-800 dark:text-gray-100 dark:bg-gray-800"
           />
         </div>
 
-        {/* Nominal */}
         <div className="space-y-2">
           <Label>Nominal (Rp)</Label>
           <Input 
@@ -121,11 +129,10 @@ export default function TransactionForm({
             onChange={(e) => handleChange("amount", e.target.value)}
             required 
             placeholder="0" 
-            className="text-lg"
+            className="text-lg dark:bg-gray-800"
           />
         </div>
 
-        {/* Tipe & Kategori */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Tipe</Label>
@@ -134,7 +141,7 @@ export default function TransactionForm({
               value={formData.type} 
               onValueChange={(val) => handleChange("type", val)}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="dark:bg-gray-800"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Expense">Pengeluaran</SelectItem>
                 <SelectItem value="Income">Pemasukan</SelectItem>
@@ -143,25 +150,50 @@ export default function TransactionForm({
           </div>
           
           <div className="space-y-2">
-            <Label>Kategori</Label>
-            <Select 
-              name="category" 
-              value={formData.category} 
-              onValueChange={(val) => handleChange("category", val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih Kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {VALID_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex justify-between items-center">
+               <Label>Kategori</Label>
+               {/* Tombol Switch Custom/List */}
+               <button 
+                 type="button" 
+                 onClick={() => setIsCustomCategory(!isCustomCategory)}
+                 className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+               >
+                 {isCustomCategory ? <><List className="w-3 h-3"/> Pilih List</> : <><Pencil className="w-3 h-3"/> Custom</>}
+               </button>
+            </div>
+
+            {isCustomCategory ? (
+                // Input Manual
+                <Input 
+                  name="category"
+                  value={formData.category}
+                  onChange={(e) => handleChange("category", e.target.value)}
+                  placeholder="Ketik kategori bebas..."
+                  className="dark:bg-gray-800"
+                  required
+                />
+            ) : (
+                // Dropdown Default
+                <Select 
+                  name="category" 
+                  value={DEFAULT_CATEGORIES.includes(formData.category) ? formData.category : ""} 
+                  onValueChange={(val) => handleChange("category", val)}
+                >
+                  <SelectTrigger className="dark:bg-gray-800">
+                    <SelectValue placeholder="Pilih Kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEFAULT_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+            )}
+            {/* Input hidden agar value tetap terkirim saat pakai Select */}
+            {!isCustomCategory && <input type="hidden" name="category" value={formData.category} />}
           </div>
         </div>
 
-        {/* Tanggal */}
         <div className="space-y-2">
           <Label>Tanggal</Label>
           <Input 
@@ -169,13 +201,13 @@ export default function TransactionForm({
             name="date" 
             value={formData.date} 
             onChange={(e) => handleChange("date", e.target.value)}
+            className="dark:bg-gray-800"
           />
         </div>
 
-        {/* TOMBOL SIMPAN (PENTING) */}
         <Button 
             type="submit" 
-            className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg font-bold shadow-lg" 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg font-bold shadow-lg dark:bg-blue-700 dark:hover:bg-blue-800" 
             disabled={loading}
         >
           {loading ? "Menyimpan..." : (initialData ? "Update Transaksi" : "Simpan Transaksi")}

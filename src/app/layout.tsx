@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner"; // <-- Import Toaster
+import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Finance Tracker AI", // <-- Judul Aplikasi
+  title: "Finance Tracker AI",
   description: "Kelola keuangan dengan bantuan AI",
 };
 
@@ -24,14 +25,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-        
-        {/* Pasang Komponen Toaster di sini agar notifikasi muncul */}
-        <Toaster position="top-center" richColors />
+    <html lang="id" suppressHydrationWarning> 
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* Bungkus dengan ThemeProvider */}
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster position="top-center" richColors />
+        </ThemeProvider>
       </body>
     </html>
   );
